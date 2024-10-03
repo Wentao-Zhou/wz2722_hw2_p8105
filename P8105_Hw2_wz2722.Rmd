@@ -1,0 +1,243 @@
+---
+title: "P8105_hw2_wz2722"
+author: "wentao zhou"
+date: "2024-09-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Problem.1
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+transit_data <- read.csv("NYC_Transit_Subway_Entrance_And_Exit_Data.csv")
+```
+
+```{r}
+transit_clean <- transit_data %>%
+  select(Line, Station.Name, Station.Latitude, Station.Longitude, Route1:Route11, 
+         Entrance.Type, Entry, Vending, ADA)
+transit_clean <- transit_clean%>%
+  mutate(Entry = ifelse(Entry == "YES", TRUE, FALSE))
+
+head(transit_clean)
+```
+#Describe the dataset
+This dataset contains information about New York City subway stations, including:
+1. Route: The subway line where the station is located.
+2. Station name: The name of the station.
+3. Longitude and latitude: The geographic coordinates of the station.
+4. Service route: The subway line that stops at the station.
+5. Entry: A logical variable that indicates whether the entry allows input (TRUE or False).
+6. Vending Machine: Indicates whether the station has vending machines.
+7. Entrance type: Entrance type (such as revolving gates, etc.).
+8. ADA compliance: Whether the station complies with ADA.
+
+For data cleaning, I first select the relevant columns, and then convert the entry variables to logical types by using the mute function and ifelse.
+
+Dimension: After cleaning, the dataset has 1868 rows by 19 columns. These data are very neat because each variable forms a column and each observation forms a row.
+
+#Q1.How many distinct stations are there?
+```{r}
+distinct_stations <- transit_clean %>%
+  distinct(Line, Station.Name) %>%
+  nrow()
+
+distinct_stations
+```
+#Q2.How many stations are ADA compliant?
+```{r}
+ada_compliant <- transit_clean %>%
+  filter(ADA == TRUE) %>%
+  distinct(Line, Station.Name) %>%
+  nrow()
+```
+
+#Q3.What proportion of station entrances / exits without vending allow entrance?
+```{r}
+entry_withoutvending <- transit_clean %>%
+  filter(Vending == "NO", Entry == TRUE) %>%
+  nrow()
+total_withoutvending <- transit_clean %>%
+  filter(Vending == "NO") %>%
+  nrow()
+proportion_withoutvending <-entry_withoutvending/total_withoutvending
+proportion_withoutvending
+```
+
+#reformat
+```{r}
+transit_clean <- transit_clean %>%
+  mutate(across(Route1:Route11, as.character))
+
+transit_clean_re <- transit_clean %>%
+  pivot_longer(cols = Route1:Route11, names_to = "Route_Number", values_to = "Route") %>%
+  filter(!is.na(Route))
+#distinct stations serve the A train
+The_A_train_stations <- transit_clean_re %>%
+  filter(Route == "A") %>%
+  distinct(Line, Station.Name) %>%
+  nrow()
+The_A_train_stations
+
+
+add_compliant_A <- transit_clean_re %>%
+  filter(Route == "A",ADA == "TRUE") %>%
+  distinct(Line, Station.Name) %>%
+  nrow()
+
+add_compliant_A
+```
+
+#Problem.2
+```{r}
+# Read and clean 
+library(readxl)
+library(dplyr)
+file_path <- "202409 Trash Wheel Collection Data.xlsx"
+mr_trash_wheel <- read_excel(file_path, sheet = "Mr. Trash Wheel", skip = 1)
+colnames(mr_trash_wheel)
+gwynnda_trash_wheel <- read_excel(file_path, sheet = "Gwynnda Trash Wheel", skip = 1)
+colnames(gwynnda_trash_wheel)
+
+# Renaming columns 
+gwynnda_trash_wheel <- gwynnda_trash_wheel %>%
+  rename(Dumpster = 1, Month = 2, Year = 3, Date = 4, Weight_tons = 5, 
+         Volume_cubic_yards = 6, Plastic_Bottles = 7, Polystyrene = 8, 
+         Cigarette_Butts = 9, Plastic_Bags = 10, Wrappers = 11) %>%
+  filter(!is.na(Dumpster)) %>%
+  mutate(Sports_Balls = 0, Trash_Wheel = "Gwynnda Trash Wheel")%>%
+  mutate(Year = as.character(Year))
+gwynnda_trash_wheel
+
+```
+#Analyze the Data
+#a. Professor Trash Wheel
+```{r}
+prof_trash_wheel <- read_excel(file_path, sheet = "Professor Trash Wheel", skip = 1)
+colnames(prof_trash_wheel)
+
+prof_trash_wheel <- prof_trash_wheel %>%
+  rename(Dumpster = 1, Month = 2, Year = 3, Date = 4, Weight_tons = 5, 
+         Volume_cubic_yards = 6, Plastic_Bottles = 7, Polystyrene = 8, 
+         Cigarette_Butts = 9, Glass_Bottles = 10, Plastic_Bags = 11, 
+         Wrappers = 12) %>%
+  filter(!is.na(Dumpster)) %>%
+  mutate(Sports_Balls = 0, Trash_Wheel = "Professor Trash Wheel")%>%
+  mutate(Year = as.character(Year))
+prof_trash_wheel
+```
+#b.Gwynnda 
+```{r}
+# Read and clean Gwynnda Trash Wheel data
+gwynnda_trash_wheel <- read_excel(file_path, sheet = "Gwynnda Trash Wheel", skip = 1)
+colnames(gwynnda_trash_wheel)
+
+# Renaming columns based on actual column names
+gwynnda_trash_wheel <- gwynnda_trash_wheel %>%
+  rename(Dumpster = 1, Month = 2, Year = 3, Date = 4, Weight_tons = 5, 
+         Volume_cubic_yards = 6, Plastic_Bottles = 7, Polystyrene = 8, 
+         Cigarette_Butts = 9, Plastic_Bags = 10, Wrappers = 11) %>%
+  filter(!is.na(Dumpster)) %>%
+  mutate(Sports_Balls = 0, Trash_Wheel = "Gwynnda Trash Wheel")%>%
+  mutate(Year = as.character(Year))
+gwynnda_trash_wheel
+```
+# Combine the three datasets
+
+```{r}
+all_trash_wheels <- bind_rows(mr_trash_wheel %>% mutate(wheel = "Mr. Trash Wheel"),
+                              prof_trash_wheel,
+                              gwynnda_trash_wheel)
+ #Total weight of trash collected by Professor Trash Wheel
+total_weight_prof_trash <- combined_trash_wheel_data %>%
+  filter(Trash_Wheel == "Professor Trash Wheel") %>%
+  summarise(total_weight = sum(Weight_tons, na.rm = TRUE)) %>%
+  pull(total_weight)
+
+# Total number of cigarette butts collected by Gwynnda in June 2022
+gwynnda_june_2022 <- combined_trash_wheel_data %>%
+  filter(Trash_Wheel == "Gwynnda Trash Wheel", Month == "June", Year == 2022) %>%
+  summarise(total_butts = sum(Cigarette_Butts, na.rm = TRUE)) %>%
+  pull(total_butts)
+
+cat("Total weight of trash collected by Professor Trash Wheel: ", total_weight_prof_trash, " tons\n")
+cat("Total number of cigarette butts collected by Gwynnda in June 2022: ", gwynnda_june_2022, "\n")
+```
+
+
+# Problem 3
+```{r}
+# 加载所需的库
+bakers <- read_csv("gbb_datasets/bakers.csv")
+bakes <- read_csv("gbb_datasets/bakes.csv")
+results <- read_csv("gbb_datasets/results.csv", skip = 2)
+viewers <- read_csv("gbb_datasets/viewers.csv")
+
+
+head(bakers)
+head(bakes)
+head(results)
+
+# clean and rename
+results_clean <- results %>%
+  rename(Episode = episode, Series = series, Baker_Name = baker, Result = result)
+
+bakes <- bakes %>%
+  mutate(Baker = str_replace_all(Baker, '"', ''))%>%
+  rename(Baker_Name = Baker)
+  
+  
+
+bakers <- bakers %>%
+  rename(Baker_Name = 'Baker Name')%>%
+  mutate(Baker_Name = word(Baker_Name, 1))
+missing_bakers <- anti_join(bakes, bakers, by = c('Series', 'Baker_Name'))
+
+# combine
+bake_data <- left_join(bakes, bakers, by = c("Baker_Name", "Series"))
+
+# Merge bake_data with results_clean on Episode and Baker_Name
+final_data <- left_join(bake_data, results_clean, by = c("Baker_Name", "Series","Episode"))
+```
+```{r}
+star_bakers <- final_data %>%
+  filter(Series >= 5 & Series <= 10, Result %in% c("STAR BAKER", "WINNER")) %>%
+  select(Series, Episode, Baker_Name,Result)
+
+
+# arrange
+star_bakers_table <- star_bakers %>%
+  arrange(Series, Episode)
+
+
+viewers_tidy <- viewers_tidy %>%
+  mutate(Series = as.numeric(str_replace(Series, "Series ", "")))
+viewers_tidy
+# Calculate average viewership for Season 1 and Season 5
+avg_viewership_s1 <- viewers_tidy %>%
+  filter(Series == 1) %>%
+  summarize(avg_viewership = mean(Viewership, na.rm = TRUE))
+
+avg_viewership_s5 <- viewers_tidy %>%
+  filter(Series == 5) %>%
+  summarize(avg_viewership = mean(Viewership, na.rm = TRUE))
+```
+
+
+
+
+
+
+
+
+
+
+
+
